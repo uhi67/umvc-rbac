@@ -1,0 +1,33 @@
+{
+  "name": "uhi67/umvc-rbac",
+  "description": "Role-based access control for UMVC framework",
+  "license": "MIT",
+  "type": "umvc-extension",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "authors": [
+    {
+      "name": "uhi67",
+      "email": "uherkovich.peter@gmail.com"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://asset-packagist.org"
+    },
+    {
+      "type": "vcs",
+      "url": "git@github.com:uhi67/umvc.git"
+    }
+  ],
+  "require": {
+    "php": ">=8.2",
+    "uhi67/umvc": "dev-develop"
+  },
+  "autoload": {
+    "psr-4": {
+      "uhi67\\rbac\\": "src"
+    }
+  }
+}
