@@ -1,6 +1,6 @@
 <?php
 
-namespace app\rbac;
+namespace uhi67\rbac;
 
 use DateTime;
 use uhi67\umvc\Model;
@@ -16,12 +16,14 @@ use uhi67\umvc\Model;
  * @property DateTime $created_at -- datetime=CURRENT_TIMESTAMP
  * @property string $created_by -- optionally references creator User
  */
-class Assignment extends Model {
+class Assignment extends Model
+{
     /**
      * Assignment has a composit primary kay
      * @return array
      */
-    public static function primaryKey() {
+    public static function primaryKey(): array
+    {
         return ['user_id', 'item_name'];
     }
 
@@ -29,27 +31,31 @@ class Assignment extends Model {
      * Assignment has no autoincrement field (the default must be overridden)
      * @return array
      */
-    public static function autoIncrement() {
+    public static function autoIncrement(): array
+    {
         return [];
     }
 
-    public static function rules() {
+    public static function rules(): array
+    {
         return [
             ['unique', ['item_name', 'user_id']], // Global rule with 2 fields
             'item_name' => ['mandatory'],
         ];
     }
 
-        /** @var string {@see Rbac::init()} can set it based on its configuration */
-    public static $tableName = 'assignment';
+    /** @var string {@see Rbac::init()} can set it based on its configuration */
+    public static string $tableName = 'assignment';
 
-    public static function tableName() {
+    public static function tableName(): string
+    {
         return static::$tableName;
     }
 
-    public static function attributeLabels() {
+    public static function attributeLabels(): array
+    {
         return [
-            'item_name' => 'Role name', // In UI this field is used for role name
+            'item_name' => 'Role name', // In UI this field is used for the role name
             'user_id' => 'User ID',
             'crated_by' => 'Created by',
             'crated_at' => 'Created at',

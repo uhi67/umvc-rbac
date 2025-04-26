@@ -52,7 +52,7 @@ raise a Forbidden Exception.
 Rbac
 ====
 
-The (first) implementation of AccessControlInterface is the Rbac (Role-Based Access Control) module.
+An implementation of AccessControlInterface is the Rbac (Role-Based Access Control) module.
 Rbac defines the hierarchy between roles and permissions. Roles and permissions are basically the same things, 
 the only difference is that if we want to list the roles, only roles will be listed and not the permissions. The reason 
 is that we want assign only roles directly to the users, not permissions. However, technically a permission can be 
@@ -64,7 +64,7 @@ Roles and permissions have a hierarchy. Practically, we have only roles at the t
 and permissions as children. Permissions may have further children (even roles, but it's not too practical)
 
 As a convention, role names are Capitalized, permission names are lowercase.
-Roles have descriptions to provide useful information to user interface for manual role assignment.
+Roles have descriptions to provide useful information to the user interface for manual role assignment.
 Controller action identifiers like "controller/action" are special permissions that are checked automatically before executing the corresponding action.
 Other special permission names are:
     '*' -- any user has this permission, even if not logged in
@@ -88,7 +88,7 @@ each other as children, respectively. Avoid reference loop, it results in an inf
 The 'roles' key defines role-type access items, 'permissions' defines the 
 permission-type access items.
 
-Children that are not defined explicitly, are created automatically as permissions without description and further children.    
+Children that are not defined explicitly are created automatically as permissions without description and further children.    
 
 Example:
 
@@ -152,7 +152,7 @@ Usage example
 -------------
 
 To create a University-context role, we have to define a callback function for the role with this type.
-To store the assignment we need a new table in the database with columns (uid, university_id, item_name).
+To store the assignment, we need a new table in the database with columns (uid, university_id, item_name).
 The callback function will return true if the user has a record in this table with the matching university_id from 
 the passed context and with the same item_name (role name).
 More generally, one can also use a single (uid, context-type, context-reference, item-name) table for all types of contexts.

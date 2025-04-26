@@ -1,6 +1,6 @@
 <?php
 
-namespace app\rbac;
+namespace uhi67\rbac;
 
 use Exception;
 use ReflectionException;
@@ -10,84 +10,107 @@ use uhi67\umvc\Component;
 /**
  * @property-read string[] $roleNames
  */
-class Rbac extends Component implements AccessControlInterface {
+class Rbac extends Component implements AccessControlInterface
+{
     /** @var AccessItem[] $accessItems -- loaded from file, indexed by name */
-    public $accessItems = null;
-    public $dataFile;
-    /** @var string  */
-    public $assignmentTable = null;
+    public ?array $accessItems = null;
+    /** @var string|null */
+    public ?string $dataFile = null;
+    /** @var string|null */
+    public ?string $assignmentTable = null;
     /** @var callable $rule */
     public $rule;
 
     /**
-     * Checks configured accessControl and returns actual assignmentTable name
+     * Checks accessControl configured and returns the actual assignmentTable name
      *
      * @throws Exception
      */
-    public static function assignmentTableName() {
-        if(!App::$app->hasComponent('accessControl')) throw new Exception('No Access Control component is configured.');
-        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
+    public static function assignmentTableName(): ?string
+    {
+        if (!App::$app->hasComponent('accessControl')) {
+            throw new Exception('No Access Control component is configured.');
+        }
         $rbac = App::$app->accessControl;
-        if(!is_a($rbac, Rbac::class)) throw new Exception('The configured Access Control component must be a `'.Rbac::class.'`');
+        if (!is_a($rbac, Rbac::class)) {
+            throw new Exception('The configured Access Control component must be a `' . Rbac::class . '`');
+        }
         return $rbac->assignmentTable;
     }
 
     /**
      * @throws Exception
      */
-    public function init() {
+    public function init(): void
+    {
         parent::init();
-        if($this->assignmentTable) Assignment::$tableName = $this->assignmentTable;
-        else $this->assignmentTable = Assignment::$tableName;
-        // Load role-permission tree from the data file (with parent-children lists)
-        if($this->dataFile) {
-            if($this->accessItems===null) $this->accessItems = [];
-            if(!file_exists($this->dataFile)) throw new Exception("RBAC data file '$this->dataFile' is not found");
+        if ($this->assignmentTable) {
+            Assignment::$tableName = $this->assignmentTable;
+        } else {
+            $this->assignmentTable = Assignment::$tableName;
+        }
+        // Load the tree of roles and permissions from the data file (with parent-children lists)
+        if ($this->dataFile) {
+            if ($this->accessItems === null) {
+                $this->accessItems = [];
+            }
+            if (!file_exists($this->dataFile)) {
+                throw new Exception("RBAC data file '$this->dataFile' is not found");
+            }
             $config = include $this->dataFile;
-            foreach($config['roles'] ?? [] as $def) {
+            foreach ($config['roles'] ?? [] as $def) {
                 $this->addAccessItem($def, AccessItem::TYPE_ROLE);
             }
-            foreach($config['permissions'] ?? [] as $def) {
+            foreach ($config['permissions'] ?? [] as $def) {
                 $this->addAccessItem($def, AccessItem::TYPE_PERMISSION);
             }
         }
-        if(!$this->dataFile && $this->accessItems===null) {
-            throw new Exception("Configuration error: neither dataFile nor accessItems are defined for the Rbac component");
+        if (!$this->dataFile && $this->accessItems === null) {
+            throw new Exception(
+                "Configuration error: neither dataFile nor accessItems are defined for the Rbac component"
+            );
         }
     }
 
     /**
      * @throws Exception
      */
-    public function addAccessItem(array $def, int $type) {
+    public function addAccessItem(array $def, int $type): void
+    {
         $itemName = $def['name'];
-        if(array_key_exists($itemName, $this->accessItems)) {
+        if (array_key_exists($itemName, $this->accessItems)) {
             $item = $this->accessItems[$itemName];
             $item->type = $type;
-            $item->descr = $def['descr']??null;
-            $item->children = $def['children']??[];
+            $item->descr = $def['descr'] ?? null;
+            $item->children = $def['children'] ?? [];
+        } else {
+            $this->accessItems[$itemName] = $item = new AccessItem([
+                'type' => $type,
+                'name' => $itemName,
+                'descr' => $def['descr'] ?? null,
+                'children' => $def['children'] ?? [],
+                'parents' => [],
+            ]);
         }
-        else $this->accessItems[$itemName] = $item = new AccessItem([
-            'type' => $type,
-            'name' => $itemName,
-            'descr' => $def['descr']??null,
-            'children' => $def['children']??[],
-            'parents' => [],
-        ]);
-        foreach($item->children as $childName) {
-            if(array_key_exists($childName, $this->accessItems)) $child = $this->accessItems[$childName];
-            else {
+        foreach ($item->children as $childName) {
+            if (array_key_exists($childName, $this->accessItems)) {
+                $child = $this->accessItems[$childName];
+            } else {
                 $this->accessItems[$childName] = $child = new AccessItem([
-                    'type'=>AccessItem::TYPE_PERMISSION,
-                    'name'=>$childName,
+                    'type' => AccessItem::TYPE_PERMISSION,
+                    'name' => $childName,
                     'children' => [],
                     'parents' => [],
                 ]);
             }
             // Add child name to the child list of the item
-            if(!in_array($childName, $item->children)) $item->children[] = $childName;
+            if (!in_array($childName, $item->children)) {
+                $item->children[] = $childName;
+            }
             // Add item name to the parent list of the new child
-            if(!in_array($itemName, $child->parents)) $child->parents[] = $itemName;
+            if (!in_array($itemName, $child->parents)) {
+                $child->parents[] = $itemName;
+            }
         }
     }
 
@@ -100,22 +123,37 @@ class Rbac extends Component implements AccessControlInterface {
      * @return bool
      * @throws Exception
      */
-    public function can(?string $uid, string $permission, array $context=[]): bool {
+    public function can(?string $uid, string $permission, array $context = []): bool
+    {
         // The user has the permission if any of the following four conditions is met (recursive)
         // 1. The permission is an automatic role, and it is valid for this user
-        if($permission=='*') return true;
+        if ($permission == '*') {
+            return true;
+        }
         $isLoggedIn = App::$app->user && App::$app->user->userId == $uid;
-        if($permission=='!' && !$isLoggedIn) return true;
-        if($permission=='@' && $isLoggedIn) return true;
+        if ($permission == '!' && !$isLoggedIn) {
+            return true;
+        }
+        if ($permission == '@' && $isLoggedIn) {
+            return true;
+        }
         // 2. User has an assignment to this permission
-        if(Assignment::getOne(['user_id'=>$uid, 'item_name'=>$permission])) return true;
+        if (Assignment::getOne(['user_id' => $uid, 'item_name' => $permission])) {
+            return true;
+        }
         // 3. The permission is a computed permission, and it is evaluated to true for the user with the given context
         $accessItem = $this->getItem($permission);
-        if(!$accessItem) return false;
-        if($accessItem instanceof Rbac && is_callable($accessItem->rule)) return call_user_func($accessItem->rule, $uid, $permission, $context);
+        if (!$accessItem) {
+            return false;
+        }
+        if ($accessItem instanceof Rbac && is_callable($accessItem->rule)) {
+            return call_user_func($accessItem->rule, $uid, $permission, $context);
+        }
         // 4. User can any parent of this permission
-        foreach($accessItem->parents as $parentName) {
-            if($this->can($uid, $parentName, $context)) return true;
+        foreach ($accessItem->parents as $parentName) {
+            if ($this->can($uid, $parentName, $context)) {
+                return true;
+            }
         }
         // Otherwise, the user has no permission
         return false;
@@ -129,10 +167,15 @@ class Rbac extends Component implements AccessControlInterface {
      * @param string $name -- name of the item to find
      * @return AccessItem|null
      */
-    public function getItem(string $name): ?AccessItemInterface {
-        if(array_key_exists($name, $this->accessItems)) return $this->accessItems[$name];
-        foreach($this->accessItems as $key=>$item) {
-            if(preg_match('~^'.str_replace('*', '[\w-]+', $key).'$~', $name)) return $item;
+    public function getItem(string $name): ?AccessItemInterface
+    {
+        if (array_key_exists($name, $this->accessItems)) {
+            return $this->accessItems[$name];
+        }
+        foreach ($this->accessItems as $key => $item) {
+            if (preg_match('~^' . str_replace('*', '[\w-]+', $key) . '$~', $name)) {
+                return $item;
+            }
         }
         return null;
     }
@@ -142,7 +185,8 @@ class Rbac extends Component implements AccessControlInterface {
      *
      * @return AccessItem[]
      */
-    public function getItems(): array {
+    public function getItems(): array
+    {
         return $this->accessItems;
     }
 
@@ -152,22 +196,29 @@ class Rbac extends Component implements AccessControlInterface {
      *
      * @return string[]
      */
-    public function getRoleNames(): array {
-        return array_map(function($item) {
+    public function getRoleNames(): array
+    {
+        return array_map(function ($item) {
             return $item->name;
-        }, array_filter($this->items, function($item) { return $item->type == AccessItem::TYPE_ROLE; }));
+        },
+            array_filter($this->items, function ($item) {
+                return $item->type == AccessItem::TYPE_ROLE;
+            }));
     }
 
     /**
      * @throws ReflectionException
      * @throws Exception
      */
-    public function assign(string $uid, string $itemName, ?string $creator=null): bool {
-        $params = ['user_id'=>$uid, 'item_name'=>$itemName];
-        if(!Assignment::getOne($params)) {
-            if($creator) $params['created_by'] = $creator;
+    public function assign(string $uid, string $itemName, ?string $creator = null): bool
+    {
+        $params = ['user_id' => $uid, 'item_name' => $itemName];
+        if (!Assignment::getOne($params)) {
+            if ($creator) {
+                $params['created_by'] = $creator;
+            }
             $assignment = new Assignment($params);
-            if(!$assignment->save()) {
+            if (!$assignment->save()) {
                 throw new Exception(json_encode($assignment->errors));
             }
             return true;
@@ -178,12 +229,15 @@ class Rbac extends Component implements AccessControlInterface {
     /**
      * @throws Exception
      */
-    public function revoke(string $uid, string $itemName): bool {
-        if($itemName=='*') {
-            return Assignment::deleteAll(['user_id'=>$uid]);
+    public function revoke(string $uid, string $itemName): bool
+    {
+        if ($itemName == '*') {
+            return Assignment::deleteAll(['user_id' => $uid]);
         }
-        $assignment = Assignment::getOne(['user_id'=>$uid, 'item_name'=>$itemName]);
-        if(!$assignment) return true;
+        $assignment = Assignment::getOne(['user_id' => $uid, 'item_name' => $itemName]);
+        if (!$assignment) {
+            return true;
+        }
         return $assignment->delete();
     }
 }

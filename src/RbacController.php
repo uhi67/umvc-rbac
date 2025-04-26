@@ -1,18 +1,20 @@
-<?php
-namespace app\rbac;
+<?php /** @noinspection PhpUnused */
 
-use app\lib\AppCommand;
+namespace uhi67\rbac;
+
 use Exception;
 use ReflectionException;
+use Throwable;
 use uhi67\umvc\App;
 use uhi67\umvc\AppHelper;
 use app\models\User;
 use uhi67\umvc\CliHelper;
+use uhi67\umvc\Command;
 use uhi67\umvc\Migration;
 
-class RbacController extends AppCommand
+class RbacController extends Command
 {
-    public function actionDefault()
+    public function actionDefault(): int
     {
         echo "The `rbac` command manages the rbac configuration.", PHP_EOL;
         echo "Usage:", PHP_EOL, PHP_EOL;
@@ -20,52 +22,59 @@ class RbacController extends AppCommand
         echo "   php app app/rbac/rbac/assign uid role -- Assign a role to the user.", PHP_EOL;
         echo "   php app app/rbac/rbac/revoke uid role -- Revoke a role from the user.", PHP_EOL;
         echo "   php app app/rbac/rbac/empty -- Deletes all assignments.", PHP_EOL;
-        return APP::EXIT_STATUS_OK;
+        return App::EXIT_STATUS_OK;
     }
 
     /**
      * @throws Exception
      */
-    public function actionInit() {
+    public function actionInit(): int
+    {
         $migrationName = 'm230202_200000_rbac';
-        $migrationFile = __DIR__.'/m230202_200000_rbac.php';
+        $migrationFile = __DIR__ . '/m230202_200000_rbac.php';
         /** @var Migration $className */
-        $className = '\app\rbac\\'.$migrationName;
+        $className = '\app\rbac\\' . $migrationName;
         try {
             require $migrationFile;
             $migration = new $className(['app' => $this->app, 'connection' => $this->app->connection, 'verbose' => 3]);
             echo "Applying migration to create RBAC tables", PHP_EOL;
             $success = $migration->up();
-        }
-        catch(\Throwable $e) {
+        } catch (Throwable $e) {
             AppHelper::showException($e);
             $success = false;
         }
 
-        if(!$success) echo "Migration failed", PHP_EOL;
+        if (!$success) {
+            echo "Migration failed", PHP_EOL;
+        }
 
         // Check tables
         $assignmentTable = Rbac::assignmentTableName();
-        if(!$this->app->connection->tableExists($assignmentTable)) {
+        if (!$this->app->connection->tableExists($assignmentTable)) {
             echo 'Error: Assignment table still does not exist';
             return App::EXIT_STATUS_ERROR;
         }
         return App::EXIT_STATUS_OK;
     }
 
-    public function actionEmpty() {
-        if(!CliHelper::confirm('This will delete all existing role and permission assignments. Are you sure to proceed?')) {
+    /**
+     * @throws Exception
+     */
+    public function actionEmpty(): int
+    {
+        if (!CliHelper::confirm(
+            'This will delete all existing role and permission assignments. Are you sure to proceed?'
+        )) {
             echo "Cancelled.", PHP_EOL;
             return App::EXIT_STATUS_ERROR;
         }
         $assignmentTable = Rbac::assignmentTableName();
-        if($this->app->connection->tableExists($assignmentTable)) {
+        if ($this->app->connection->tableExists($assignmentTable)) {
             echo "Deleting existing assignments...", PHP_EOL;
             Assignment::deleteAll(null, [], null, $q);
             echo $q->affected . ' rows has been deleted', PHP_EOL;
             return App::EXIT_STATUS_OK;
-        }
-        else {
+        } else {
             echo 'Assignment table does not exist. Please run rbac/init first.';
             return App::EXIT_STATUS_ERROR;
         }
@@ -79,11 +88,13 @@ class RbacController extends AppCommand
      * @throws ReflectionException
      * @throws Exception
      */
-    public function actionAssign()
+    public function actionAssign(): int
     {
         $params = $this->query;
         $roleName = array_shift($params);
-        if(!App::$app->hasComponent('accessControl') || !App::$app->accessControl instanceof Rbac) throw new Exception('No Rbac configured as accessControl component.');
+        if (!App::$app->hasComponent('accessControl') || !App::$app->accessControl instanceof Rbac) {
+            throw new Exception('No Rbac configured as accessControl component.');
+        }
         $role = App::$app->accessControl->getItem($roleName);
         if (!$role) {
             echo "Unknown role '$roleName'", PHP_EOL;
@@ -108,11 +119,13 @@ class RbacController extends AppCommand
      * @throws ReflectionException
      * @throws Exception
      */
-    public function actionRevoke()
+    public function actionRevoke(): int
     {
         $params = $this->query;
         $roleName = array_shift($params);
-        if(!App::$app->hasComponent('accessControl') || !App::$app->accessControl instanceof Rbac) throw new Exception('No Rbac configured as accessControl component.');
+        if (!App::$app->hasComponent('accessControl') || !App::$app->accessControl instanceof Rbac) {
+            throw new Exception('No Rbac configured as accessControl component.');
+        }
         $role = App::$app->accessControl->getItem($roleName);
         if (!$role) {
             echo "Unknown role '$roleName'", PHP_EOL;
