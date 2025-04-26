@@ -27,7 +27,8 @@
   },
   "autoload": {
     "psr-4": {
-      "uhi67\\rbac\\": "src"
+      "uhi67\\rbac\\": "src",
+      "uhi67\\rbac\\migrations\\": "migrations"
     }
   }
 }

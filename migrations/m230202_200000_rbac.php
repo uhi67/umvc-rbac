@@ -1,9 +1,10 @@
 <?php
 /** @noinspection PhpUnused */
 
-namespace uhi67\rbac;
+namespace uhi67\rbac\migrations;
 
 use Exception;
+use uhi67\rbac\Rbac;
 use uhi67\umvc\Migration;
 
 /**
