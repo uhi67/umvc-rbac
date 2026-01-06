@@ -17,7 +17,7 @@ class m230202_200000_rbac extends Migration
      * @return bool
      * @throws Exception
      */
-    public function up()
+    public function up(): bool
     {
         // Check configuration and existing table
         $assignmentTable = Rbac::assignmentTableName();
